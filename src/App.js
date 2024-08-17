@@ -5,28 +5,32 @@ import 'react-calendar/dist/Calendar.css';
 
 function App() {
   const [selectedDate, setSelectedDate] = useState(null);
-  const [datesWithTimes, setDatesWithTimes] = useState({});
+  const [businesses, setBusinesses] = useState({
+    "1": {
+      name: "Club de Fútbol",
+      spaces: {
+        "Futbol": { availability: {} },
+        "Padel": { availability: {} }
+      }
+    }
+  });
+  
+  const [selectedBusinessId, setSelectedBusinessId] = useState("1");
+  const [selectedSpace, setSelectedSpace] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedHour, setSelectedHour] = useState(null);
   const [isReservationCancelled, setIsReservationCancelled] = useState(false);
   const today = new Date();
 
   const handleDayPress = (date) => {
-    if (selectedDate && date.toISOString() === selectedDate.toISOString()) {
-      setSelectedDate(null);
-    } else {
-      setSelectedDate(date);
-      const dateFormatted = date.toISOString().split('T')[0];
-      const timesForDate = datesWithTimes[dateFormatted] || [];
-      setDatesWithTimes({ ...datesWithTimes, [dateFormatted]: timesForDate });
-    }
+    setSelectedDate(date);
   };
 
   const handleTimeSlotClick = (hour) => {
-    if (!selectedDate) return;
+    if (!selectedDate || !selectedSpace) return;
 
     const dateString = selectedDate.toISOString().split('T')[0];
-    const timesForDate = datesWithTimes[dateString] || [];
+    const timesForDate = businesses[selectedBusinessId].spaces[selectedSpace].availability[dateString] || [];
 
     setShowModal(true);
     setSelectedHour(hour);
@@ -36,24 +40,23 @@ function App() {
   const handleConfirmReservation = () => {
     setShowModal(false);
     const dateString = selectedDate.toISOString().split('T')[0];
-    let updatedTimesForDate = { ...datesWithTimes };
+    let updatedBusinesses = { ...businesses };
 
     if (isReservationCancelled) {
-      updatedTimesForDate[dateString] = updatedTimesForDate[dateString].filter((time) => time !== selectedHour);
+      updatedBusinesses[selectedBusinessId].spaces[selectedSpace].availability[dateString] = updatedBusinesses[selectedBusinessId].spaces[selectedSpace].availability[dateString].filter((time) => time !== selectedHour);
     } else {
-      updatedTimesForDate[dateString] = [...(updatedTimesForDate[dateString] || []), selectedHour];
+      updatedBusinesses[selectedBusinessId].spaces[selectedSpace].availability[dateString] = [...(updatedBusinesses[selectedBusinessId].spaces[selectedSpace].availability[dateString] || []), selectedHour];
     }
 
-    setDatesWithTimes(updatedTimesForDate);
+    setBusinesses(updatedBusinesses);
   };
 
   const renderTimeSlots = () => {
     const columns = [[], [], []];
-    if (selectedDate) {
+    if (selectedDate && selectedSpace) {
       for (let hour = 9; hour <= 23; hour++) {
         const column = Math.floor((hour - 9) / 5);
-        const isSelected = (datesWithTimes[selectedDate.toISOString().split('T')[0]] || []).includes(hour);
-        columns[column] = columns[column] || [];
+        const isSelected = (businesses[selectedBusinessId].spaces[selectedSpace].availability[selectedDate.toISOString().split('T')[0]] || []).includes(hour);
         columns[column].push(
           <div
             key={hour}
@@ -78,6 +81,15 @@ function App() {
         <p className="titulo">Proyecto reservas.</p>
       </header>
       <main className='cuerpo'>
+        <div className="business-selector">
+          <label>Selecciona el espacio:</label>
+          <select onChange={(e) => setSelectedSpace(e.target.value)} value={selectedSpace}>
+            <option value="" disabled>Elige un espacio</option>
+            {Object.keys(businesses[selectedBusinessId].spaces).map((space) => (
+              <option key={space} value={space}>{space}</option>
+            ))}
+          </select>
+        </div>
         <div className="calendar-container">
           <Calendar
             value={selectedDate}
@@ -85,9 +97,9 @@ function App() {
             minDate={today}
           />
         </div>
-        {selectedDate && (
+        {selectedDate && selectedSpace && (
           <div className="time-slots-container">
-            <h3>Horarios disponibles para {selectedDate.toLocaleDateString()}</h3>
+            <h3>Horarios disponibles para {selectedDate.toLocaleDateString()} - {selectedSpace}</h3>
             <div className="time-slots">
               {renderTimeSlots()}
             </div>
